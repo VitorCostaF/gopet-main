@@ -1,5 +1,7 @@
-package com.gopet.whatsapp;
+package com.gopet.whatsapp.application;
 
+import com.gopet.whatsapp.domain.ConfirmacaoReservaRequest;
+import com.gopet.whatsapp.domain.WhatsappProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

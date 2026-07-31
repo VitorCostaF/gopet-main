@@ -1,4 +1,4 @@
-package com.gopet.whatsapp;
+package com.gopet.whatsapp.domain;
 
 import jakarta.validation.constraints.NotBlank;
 

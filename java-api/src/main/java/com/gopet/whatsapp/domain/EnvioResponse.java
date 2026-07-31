@@ -1,4 +1,4 @@
-package com.gopet.whatsapp;
+package com.gopet.whatsapp.domain;
 
 public record EnvioResponse(boolean enviado, String motivo) {
 

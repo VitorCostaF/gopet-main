@@ -1,5 +1,8 @@
-package com.gopet.whatsapp;
+package com.gopet.whatsapp.application;
 
+import com.gopet.whatsapp.domain.ConfirmacaoReservaRequest;
+import com.gopet.whatsapp.domain.EnvioResponse;
+import com.gopet.whatsapp.domain.WhatsappProvider;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
