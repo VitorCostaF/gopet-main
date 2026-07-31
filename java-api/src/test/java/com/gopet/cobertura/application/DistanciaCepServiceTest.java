@@ -1,5 +1,8 @@
-package com.gopet.cobertura.domain;
+package com.gopet.cobertura.application;
 
+import com.gopet.cobertura.domain.CepGeolocalizacaoProvider;
+import com.gopet.cobertura.domain.CepNaoEncontradoException;
+import com.gopet.cobertura.domain.Coordenadas;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

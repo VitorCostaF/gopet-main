@@ -5,16 +5,38 @@ spring:
   application:
     name: gopet-java-api
 
+# Provider de envio de WhatsApp: zapi (padrão) ou evolution (self-hosted).
+whatsapp:
+  provider: ${WHATSAPP_PROVIDER:zapi}
+
 # Painel Z-API > sua instância > Segurança/Instância.
 zapi:
   instance-id: ${ZAPI_INSTANCE_ID:}
   token: ${ZAPI_TOKEN:}
   client-token: ${ZAPI_CLIENT_TOKEN:}
 
+# Evolution API self-hospedada — https://github.com/EvolutionAPI/evolution-api
+# Usado quando WHATSAPP_PROVIDER=evolution.
+evolution:
+  base-url: ${EVOLUTION_BASE_URL:}
+  instance: ${EVOLUTION_INSTANCE:}
+  api-key: ${EVOLUTION_API_KEY:}
+
+# Backend de persistência da reserva: supabase (REST/PostgREST, padrão) ou postgres (JDBC direto).
+reserva:
+  store: ${RESERVA_STORE:supabase}
+
 # Painel Supabase > Settings > API. Sem essas variáveis, POST /reservas roda em modo demo (sem persistir).
+# Usado quando RESERVA_STORE=supabase.
 supabase:
   url: ${SUPABASE_URL:}
   service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+
+# Conexão direta com o Postgres — usada só quando RESERVA_STORE=postgres.
+db:
+  url: ${DB_URL:}
+  username: ${DB_USERNAME:}
+  password: ${DB_PASSWORD:}
 
 # Origens do front-end autorizadas a chamar esta API direto do navegador (separadas por vírgula).
 app:

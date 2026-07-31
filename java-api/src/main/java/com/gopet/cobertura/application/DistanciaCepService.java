@@ -1,5 +1,9 @@
-package com.gopet.cobertura.domain;
+package com.gopet.cobertura.application;
 
+import com.gopet.cobertura.domain.CepGeolocalizacaoProvider;
+import com.gopet.cobertura.domain.CepNaoEncontradoException;
+import com.gopet.cobertura.domain.CoberturaResultado;
+import com.gopet.cobertura.domain.Coordenadas;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
