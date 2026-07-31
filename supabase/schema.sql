@@ -113,16 +113,18 @@ create table if not exists reservas (
   inicio timestamptz not null,
   fim timestamptz,
   endereco jsonb not null,           -- snapshot { cep, numero, complemento, instrucoes }
-  status status_reserva not null default 'pendente_pagamento',
+  status status_reserva not null default 'confirmada',
   preco_total_centavos int not null check (preco_total_centavos >= 0),
   taxa_cancelamento_centavos int not null default 0,
-  pagamento_id text,
-  pagamento_metodo text,             -- 'pix' | 'cartao'
+  pagamento_id text,                 -- legado: cobrança na hora foi substituída por confirmação via WhatsApp
+  pagamento_metodo text,
+  whatsapp text,                     -- WhatsApp do tutor, usado para enviar a confirmação da reserva
   idempotency_key text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
 );
+alter table reservas add column if not exists whatsapp text;
 create unique index if not exists idx_reservas_idem on reservas(idempotency_key) where idempotency_key is not null;
 create index if not exists idx_reservas_tutor on reservas(tutor_id, inicio desc);
 create index if not exists idx_reservas_passeador_dia on reservas(passeador_id, inicio);
