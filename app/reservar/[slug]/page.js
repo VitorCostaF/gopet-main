@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { C, F, Btn } from "@/components/ui";
 import { DEMO, brl } from "@/lib/supabase";
+import { javaApiFetch } from "@/lib/javaApi";
 
 const DIAS = ["Amanhã", "Sáb", "Dom", "Seg"];
 
@@ -17,11 +18,10 @@ export default function Reservar() {
   const [hora, setHora] = useState(null);
   const [pets2, setPets2] = useState(false);
   const [endereco, setEndereco] = useState({ cep: "", numero: "", instrucoes: "" });
-  const [metodo, setMetodo] = useState("pix");
-  const [cartao, setCartao] = useState({ numero: "", validade: "", cvv: "" });
+  const [whatsapp, setWhatsapp] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState(null);
-  const [pix, setPix] = useState(null);
+  const [concluida, setConcluida] = useState(null);
 
   if (!servico) {
     return (
@@ -41,18 +41,16 @@ export default function Reservar() {
     setEnviando(true);
     setErro(null);
     try {
-      const resp = await fetch("/api/reservas", {
+      // Reserva criada direto no gopet-java-api, que já dispara a confirmação por WhatsApp.
+      const resp = await javaApiFetch("/reservas", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({
-          servico: servico.id, dia, hora, dois_pets: pets2, endereco,
-          pagamento: metodo === "pix" ? { metodo: "pix" } : { metodo: "cartao", token_cartao: "tok_" + cartao.numero.slice(-4) },
-        }),
+        headers: { "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ servico: servico.id, dia, hora, dois_pets: pets2, endereco, whatsapp }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error?.message || "Não foi possível concluir. Tente de novo.");
-      if (data.pix) { setPix(data.pix); return; }
-      router.push(`/minha-conta?nova=${data.reserva.id}`);
+
+      setConcluida(data.reserva);
     } catch (e) {
       setErro(e.message);
     } finally {
@@ -60,7 +58,7 @@ export default function Reservar() {
     }
   };
 
-  const etapas = ["Data e horário", "Endereço", "Pagamento"];
+  const etapas = ["Data e horário", "Endereço", "Confirmação"];
 
   return (
     <main className="max-w-2xl mx-auto px-5 py-8">
@@ -143,55 +141,33 @@ export default function Reservar() {
             </div>
           </div>
 
-          {!pix && (
-            <>
-              <div className="flex gap-2">
-                {[["pix", "Pix"], ["cartao", "Cartão"]].map(([v, l]) => (
-                  <button key={v} onClick={() => setMetodo(v)} className="flex-1 py-3 rounded-xl font-bold"
-                    style={{ background: metodo === v ? C.brand : C.paper, color: metodo === v ? C.paper : C.ink, border: `1px solid ${C.mint}` }}>{l}</button>
-                ))}
-              </div>
-              {metodo === "cartao" && (
-                <div className="mt-4 grid gap-3">
-                  <input placeholder="Número do cartão" value={cartao.numero}
-                    onChange={(e) => setCartao({ ...cartao, numero: e.target.value })}
-                    className="px-4 py-3 rounded-xl" style={{ background: C.paper, border: `2px solid ${C.mint}` }} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input placeholder="MM/AA" value={cartao.validade}
-                      onChange={(e) => setCartao({ ...cartao, validade: e.target.value })}
-                      className="px-4 py-3 rounded-xl" style={{ background: C.paper, border: `2px solid ${C.mint}` }} />
-                    <input placeholder="CVV" value={cartao.cvv}
-                      onChange={(e) => setCartao({ ...cartao, cvv: e.target.value })}
-                      className="px-4 py-3 rounded-xl" style={{ background: C.paper, border: `2px solid ${C.mint}` }} />
-                  </div>
-                </div>
-              )}
-            </>
+          {!concluida && (
+            <div>
+              <label className="text-xs font-bold" style={{ fontFamily: F.mono, color: C.inkSoft }}>WHATSAPP</label>
+              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="(11) 91234-5678" type="tel"
+                className="w-full mt-1 px-4 py-3 rounded-xl" style={{ background: C.paper, border: `2px solid ${C.mint}` }} />
+              <p className="mt-1 text-xs" style={{ color: C.inkSoft }}>Vamos te avisar por lá assim que sua reserva for agendada.</p>
+            </div>
           )}
 
-          {pix && (
+          {concluida && (
             <div className="text-center">
-              <div className="mx-auto w-36 h-36 rounded-xl grid grid-cols-6 gap-1 p-3"
-                style={{ background: C.paper, border: `2px solid ${C.mint}` }} aria-label="QR Code Pix">
-                {Array.from({ length: 36 }).map((_, i) => (
-                  <div key={i} className="rounded-sm" style={{ background: (i * 7) % 3 ? C.brandDeep : "transparent" }} />
-                ))}
-              </div>
-              <p className="mt-2 text-xs break-all px-4" style={{ fontFamily: F.mono, color: C.inkSoft }}>{pix.copia_cola}</p>
-              <p className="mt-1 text-xs" style={{ color: C.inkSoft }}>Depois de pagar no seu banco, toque abaixo.</p>
+              <div className="text-4xl">✅</div>
+              <p className="mt-2 font-semibold">Reserva confirmada!</p>
+              <p className="mt-1 text-xs" style={{ color: C.inkSoft }}>Enviamos os detalhes pro seu WhatsApp.</p>
               <div className="mt-4">
-                <Btn onClick={() => router.push("/minha-conta")}>Já paguei — ver minha reserva</Btn>
+                <Btn onClick={() => router.push(`/minha-conta?nova=${concluida.id}`)}>Ver minha reserva</Btn>
               </div>
             </div>
           )}
 
           {erro && <p className="mt-3 font-semibold" style={{ color: C.danger }}>{erro}</p>}
 
-          {!pix && (
+          {!concluida && (
             <div className="mt-6 flex justify-between items-center">
               <Btn tom="ghost" onClick={() => setEtapa(2)}>Voltar</Btn>
-              <Btn onClick={pagar} disabled={enviando || (metodo === "cartao" && cartao.numero.length < 13)}>
-                {enviando ? "Confirmando…" : metodo === "pix" ? "Gerar Pix" : `Pagar ${brl(total)}`}
+              <Btn onClick={pagar} disabled={enviando || whatsapp.replace(/\D/g, "").length < 10}>
+                {enviando ? "Confirmando…" : "Confirmar reserva"}
               </Btn>
             </div>
           )}
