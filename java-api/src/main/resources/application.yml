@@ -45,5 +45,5 @@ app:
 
 # CEP de referência (base) da GO PET e raio de atendimento a partir dele.
 cobertura:
-  cep-base: ${COBERTURA_CEP_BASE:04321000}
-  raio-km: ${COBERTURA_RAIO_KM:8}
+  cep-base: ${COBERTURA_CEP_BASE:04323240}
+  raio-km: ${COBERTURA_RAIO_KM:2}

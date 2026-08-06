@@ -4,16 +4,27 @@ import { useState } from "react";
 import Link from "next/link";
 import { C, F, Btn, Selo, AvatarIni, Estrelas, TrilhaAoVivo } from "@/components/ui";
 import { DEMO, brl, precoPlanoMensal } from "@/lib/supabase";
+import { javaApiFetch } from "@/lib/javaApi";
 
 export default function Home() {
   const [cep, setCep] = useState("");
   const [cepStatus, setCepStatus] = useState(null);
   const [avisado, setAvisado] = useState({});
 
-  const checarCep = () => {
-    const limpo = cep.replace(/\D/g, "");
-    if (limpo.length !== 8) return setCepStatus("invalido");
-    setCepStatus(DEMO.coberturaPrefixos.some((p) => limpo.startsWith(p)) ? "ok" : "fora");
+  const cepDigits = cep.replace(/\D/g, "");
+  const cepFormatoInvalido = cep.length > 0 && cepDigits.length !== 8;
+
+  const checarCep = async () => {
+    if (cepDigits.length !== 8) return;
+    setCepStatus("checando");
+    try {
+      const resp = await javaApiFetch(`/cobertura?cep=${cepDigits}`);
+      const data = await resp.json();
+      if (!resp.ok) throw new Error();
+      setCepStatus(data.atende ? "ok" : "fora");
+    } catch {
+      setCepStatus("erro");
+    }
   };
 
   return (
@@ -39,11 +50,14 @@ export default function Home() {
                 className="flex-1 px-4 py-3 rounded-xl outline-none"
                 style={{ background: C.white, border: `2px solid ${C.mint}`, fontSize: 15 }}
               />
-              <Btn tom="brand" onClick={checarCep}>Ver se atendemos</Btn>
+              <Btn tom="brand" onClick={checarCep} disabled={cepStatus === "checando" || cepDigits.length !== 8}>
+                {cepStatus === "checando" ? "Checando…" : "Ver se atendemos"}
+              </Btn>
             </div>
+            {cepFormatoInvalido && <p className="mt-2" style={{ color: C.danger }}>Digite um CEP válido de 8 números.</p>}
             {cepStatus === "ok" && <p className="mt-2 font-semibold" style={{ color: C.brand }}>Atendemos! 🎉 Escolha um serviço abaixo.</p>}
             {cepStatus === "fora" && <p className="mt-2" style={{ color: C.danger }}>Ainda não chegamos aí — mas estamos expandindo pela Zona Sul.</p>}
-            {cepStatus === "invalido" && <p className="mt-2" style={{ color: C.danger }}>Digite um CEP válido de 8 números.</p>}
+            {cepStatus === "erro" && <p className="mt-2" style={{ color: C.danger }}>Não conseguimos checar agora. Tente de novo.</p>}
           </div>
           <div>
             <TrilhaAoVivo altura={230} />

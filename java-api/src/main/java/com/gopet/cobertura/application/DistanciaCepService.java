@@ -4,9 +4,11 @@ import com.gopet.cobertura.domain.CepGeolocalizacaoProvider;
 import com.gopet.cobertura.domain.CepNaoEncontradoException;
 import com.gopet.cobertura.domain.CoberturaResultado;
 import com.gopet.cobertura.domain.Coordenadas;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class DistanciaCepService {
 
@@ -17,14 +19,16 @@ public class DistanciaCepService {
     private final double raioAtendimentoKm;
 
     public DistanciaCepService(CepGeolocalizacaoProvider cepGeolocalizacaoProvider,
-                                @Value("${cobertura.cep-base}") String cepBase,
-                                @Value("${cobertura.raio-km}") double raioAtendimentoKm) {
+            @Value("${cobertura.cep-base}") String cepBase,
+            @Value("${cobertura.raio-km}") double raioAtendimentoKm) {
         this.cepGeolocalizacaoProvider = cepGeolocalizacaoProvider;
         this.cepBase = cepBase;
         this.raioAtendimentoKm = raioAtendimentoKm;
     }
 
     public CoberturaResultado verificar(String cep) {
+        log.debug("Verificando cobertura para o CEP solicitado: {}", cep);
+
         String cepLimpo = cep == null ? "" : cep.replaceAll("\\D", "");
         if (cepLimpo.length() != 8) {
             return CoberturaResultado.invalido();
@@ -34,6 +38,8 @@ public class DistanciaCepService {
             Coordenadas origem = cepGeolocalizacaoProvider.buscarCoordenadas(cepBase);
             Coordenadas destino = cepGeolocalizacaoProvider.buscarCoordenadas(cepLimpo);
             double distanciaKm = calcularDistanciaKm(origem, destino);
+
+            log.debug("Distância calculada para o CEP {}: {} km", cepLimpo, distanciaKm);
 
             return CoberturaResultado.calculado(distanciaKm, distanciaKm <= raioAtendimentoKm);
         } catch (CepNaoEncontradoException e) {
@@ -47,7 +53,8 @@ public class DistanciaCepService {
 
         double a = Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2)
                 + Math.cos(Math.toRadians(origem.latitude())) * Math.cos(Math.toRadians(destino.latitude()))
-                * Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
+                        * Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
+
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return RAIO_TERRA_KM * c;

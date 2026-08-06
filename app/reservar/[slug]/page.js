@@ -18,6 +18,7 @@ export default function Reservar() {
   const [hora, setHora] = useState(null);
   const [pets2, setPets2] = useState(false);
   const [endereco, setEndereco] = useState({ cep: "", numero: "", instrucoes: "" });
+  const [cepStatus, setCepStatus] = useState(null);
   const [whatsapp, setWhatsapp] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -36,6 +37,22 @@ export default function Reservar() {
   }
 
   const total = Math.round(servico.preco_centavos * (pets2 ? 1.6 : 1));
+
+  const cepDigits = endereco.cep.replace(/\D/g, "");
+  const cepFormatoInvalido = endereco.cep.length > 0 && cepDigits.length !== 8;
+
+  const checarCep = async () => {
+    if (cepDigits.length !== 8) return;
+    setCepStatus("checando");
+    try {
+      const resp = await javaApiFetch(`/cobertura?cep=${cepDigits}`);
+      const data = await resp.json();
+      if (!resp.ok) throw new Error();
+      setCepStatus(data.atende ? "ok" : "fora");
+    } catch {
+      setCepStatus("erro");
+    }
+  };
 
   const pagar = async () => {
     setEnviando(true);
@@ -102,8 +119,16 @@ export default function Reservar() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold" style={{ fontFamily: F.mono, color: C.inkSoft }}>CEP</label>
-              <input value={endereco.cep} onChange={(e) => setEndereco({ ...endereco, cep: e.target.value })} placeholder="04321-000"
+              <input value={endereco.cep} onChange={(e) => { setEndereco({ ...endereco, cep: e.target.value }); setCepStatus(null); }}
+                placeholder="04321-000"
                 className="w-full mt-1 px-4 py-3 rounded-xl" style={{ background: C.paper, border: `2px solid ${C.mint}` }} />
+              {cepFormatoInvalido && <p className="mt-1 text-xs" style={{ color: C.danger }}>CEP deve ter 8 números.</p>}
+              <Btn cheio={false} tom="brand" className="mt-2" onClick={checarCep} disabled={cepStatus === "checando" || cepDigits.length !== 8}>
+                {cepStatus === "checando" ? "Checando…" : "Verificar"}
+              </Btn>
+              {cepStatus === "ok" && <p className="mt-1 text-xs font-semibold" style={{ color: C.brand }}>Atendemos essa região 🎉</p>}
+              {cepStatus === "fora" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Ainda não atendemos esse CEP.</p>}
+              {cepStatus === "erro" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Não conseguimos checar agora. Tente de novo.</p>}
             </div>
             <div>
               <label className="text-xs font-bold" style={{ fontFamily: F.mono, color: C.inkSoft }}>NÚMERO</label>
@@ -120,7 +145,7 @@ export default function Reservar() {
           </div>
           <div className="mt-6 flex justify-between">
             <Btn tom="ghost" onClick={() => setEtapa(1)}>Voltar</Btn>
-            <Btn onClick={() => setEtapa(3)} disabled={!endereco.numero || endereco.cep.replace(/\D/g, "").length !== 8}>Continuar</Btn>
+            <Btn onClick={() => setEtapa(3)} disabled={!endereco.numero || cepStatus !== "ok"}>Continuar</Btn>
           </div>
         </div>
       )}
