@@ -46,8 +46,14 @@ app:
 # CEP de referência (base) da GO PET e raio de atendimento a partir dele.
 # Geolocalização por CEP tenta, nessa ordem: BrasilAPI -> Geoapify -> Nominatim (ver CepGeolocalizacaoConfig).
 cobertura:
-  cep-base: ${COBERTURA_CEP_BASE:04323240}
+  cep-base: ${COBERTURA_CEP_BASE:}
   raio-km: ${COBERTURA_RAIO_KM:2}
   geoapify:
     # https://www.geoapify.com/ > My Projects > sua API key. Sem isso, o provider Geoapify é pulado.
     api-key: ${GEOAPIFY_API_KEY:}
+
+logging:
+  level:
+    com.gopet: DEBUG
+  file:
+    name: logs/gopet-api.log

@@ -1,6 +1,7 @@
 package com.gopet.cobertura.infra;
 
 import com.gopet.cobertura.domain.CepGeolocalizacaoProvider;
+import com.gopet.cobertura.infra.brasilapi.BrasilApiCepGeolocalizacaoProvider;
 import com.gopet.cobertura.infra.geoapify.GeoapifyCepGeolocalizacaoProvider;
 import com.gopet.cobertura.infra.nominatim.NominatimCepGeolocalizacaoProvider;
 import org.springframework.context.annotation.Bean;
@@ -21,9 +22,9 @@ public class CepGeolocalizacaoConfig {
     @Bean
     @Primary
     public CepGeolocalizacaoProvider cepGeolocalizacaoProvider(
-            BrasilApiCepGeolocalizacaoProvider brasilApi,
             GeoapifyCepGeolocalizacaoProvider geoapify,
+            BrasilApiCepGeolocalizacaoProvider brasilApi,
             NominatimCepGeolocalizacaoProvider nominatim) {
-        return new CepGeolocalizacaoProviderChain(List.of(brasilApi, geoapify, nominatim));
+        return new CepGeolocalizacaoProviderChain(List.of(geoapify, brasilApi , nominatim));
     }
 }

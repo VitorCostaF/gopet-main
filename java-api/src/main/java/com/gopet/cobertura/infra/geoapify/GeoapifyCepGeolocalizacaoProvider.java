@@ -8,7 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-/** Geocodifica o CEP via Geoapify — usado como fallback quando a BrasilAPI não tem coordenadas. */
+/**
+ * Geocodifica o CEP via Geoapify — usado como fallback quando a BrasilAPI não
+ * tem coordenadas.
+ */
 @Slf4j
 @Component
 public class GeoapifyCepGeolocalizacaoProvider implements CepGeolocalizacaoProvider {

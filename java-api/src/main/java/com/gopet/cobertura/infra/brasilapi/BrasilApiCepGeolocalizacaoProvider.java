@@ -1,10 +1,8 @@
-package com.gopet.cobertura.infra;
+package com.gopet.cobertura.infra.brasilapi;
 
 import com.gopet.cobertura.domain.CepGeolocalizacaoProvider;
 import com.gopet.cobertura.domain.CepNaoEncontradoException;
 import com.gopet.cobertura.domain.Coordenadas;
-import com.gopet.cobertura.infra.brasilapi.BrasilApiCepResponse;
-import com.gopet.cobertura.infra.brasilapi.Coordinates;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
