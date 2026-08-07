@@ -21,7 +21,11 @@ export default function Home() {
       const resp = await javaApiFetch(`/cobertura?cep=${cepDigits}`);
       const data = await resp.json();
       if (!resp.ok) throw new Error();
-      setCepStatus(data.atende ? "ok" : "fora");
+      if (data.motivo) {
+        setCepStatus("cepNaoEncontrado");
+      } else {
+        setCepStatus(data.atende ? "ok" : "fora");
+      }
     } catch {
       setCepStatus("erro");
     }
@@ -57,6 +61,7 @@ export default function Home() {
             {cepFormatoInvalido && <p className="mt-2" style={{ color: C.danger }}>Digite um CEP válido de 8 números.</p>}
             {cepStatus === "ok" && <p className="mt-2 font-semibold" style={{ color: C.brand }}>Atendemos! 🎉 Escolha um serviço abaixo.</p>}
             {cepStatus === "fora" && <p className="mt-2" style={{ color: C.danger }}>Ainda não chegamos aí — mas estamos expandindo pela Zona Sul.</p>}
+            {cepStatus === "cepNaoEncontrado" && <p className="mt-2" style={{ color: C.danger }}>Não conseguimos localizar esse CEP. Confira o número e tente de novo.</p>}
             {cepStatus === "erro" && <p className="mt-2" style={{ color: C.danger }}>Não conseguimos checar agora. Tente de novo.</p>}
           </div>
           <div>

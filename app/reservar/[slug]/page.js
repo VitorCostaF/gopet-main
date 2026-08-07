@@ -48,7 +48,11 @@ export default function Reservar() {
       const resp = await javaApiFetch(`/cobertura?cep=${cepDigits}`);
       const data = await resp.json();
       if (!resp.ok) throw new Error();
-      setCepStatus(data.atende ? "ok" : "fora");
+      if (data.motivo) {
+        setCepStatus("cepNaoEncontrado");
+      } else {
+        setCepStatus(data.atende ? "ok" : "fora");
+      }
     } catch {
       setCepStatus("erro");
     }
@@ -128,6 +132,7 @@ export default function Reservar() {
               </Btn>
               {cepStatus === "ok" && <p className="mt-1 text-xs font-semibold" style={{ color: C.brand }}>Atendemos essa região 🎉</p>}
               {cepStatus === "fora" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Ainda não atendemos esse CEP.</p>}
+              {cepStatus === "cepNaoEncontrado" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Não conseguimos localizar esse CEP. Confira o número e tente de novo.</p>}
               {cepStatus === "erro" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Não conseguimos checar agora. Tente de novo.</p>}
             </div>
             <div>
