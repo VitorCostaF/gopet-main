@@ -50,7 +50,7 @@ class ReservaServiceTest {
         when(distanciaCepService.verificar("04321000")).thenReturn(CoberturaResultado.calculado(1.0, true));
         when(store.configurado()).thenReturn(false);
 
-        var resultado = service.criar(requestValido(), "idem-1");
+        var resultado = service.criar(requestValido(), "idem-1", null);
 
         assertThat(resultado.novo()).isTrue();
         assertThat(resultado.reserva().precoTotalCentavos()).isEqualTo(3500);
@@ -66,7 +66,7 @@ class ReservaServiceTest {
         var req = new ReservaRequest("passeio_30", "Amanhã", "08:30", true,
                 new EnderecoRequest("04321-000", "123", ""), "11912345678", null);
 
-        var resultado = service.criar(req, "idem-2");
+        var resultado = service.criar(req, "idem-2", null);
 
         assertThat(resultado.reserva().precoTotalCentavos()).isEqualTo(5600); // 3500 * 1.6
     }
@@ -75,7 +75,7 @@ class ReservaServiceTest {
     void criar_foraDaCobertura_lancaErroSemEnviarConfirmacao() {
         when(distanciaCepService.verificar("04321000")).thenReturn(CoberturaResultado.calculado(50.0, false));
 
-        assertThatThrownBy(() -> service.criar(requestValido(), "idem-3"))
+        assertThatThrownBy(() -> service.criar(requestValido(), "idem-3", null))
                 .isInstanceOfSatisfying(ReservaException.class, e -> {
                     assertThat(e.getStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
                     assertThat(e.getCode()).isEqualTo("FORA_DA_COBERTURA");
@@ -85,7 +85,7 @@ class ReservaServiceTest {
 
     @Test
     void criar_semIdempotencyKey_lancaErroDeValidacao() {
-        assertThatThrownBy(() -> service.criar(requestValido(), null))
+        assertThatThrownBy(() -> service.criar(requestValido(), null, null))
                 .isInstanceOfSatisfying(ReservaException.class, e -> {
                     assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(e.getCode()).isEqualTo("VALIDATION_ERROR");
@@ -98,7 +98,7 @@ class ReservaServiceTest {
         var req = new ReservaRequest("inexistente", "Amanhã", "08:30", false,
                 new EnderecoRequest("04321-000", "123", ""), "11912345678", null);
 
-        assertThatThrownBy(() -> service.criar(req, "idem-4"))
+        assertThatThrownBy(() -> service.criar(req, "idem-4", null))
                 .isInstanceOfSatisfying(ReservaException.class, e ->
                         assertThat(e.getCode()).isEqualTo("VALIDATION_ERROR"));
         verifyNoInteractions(distanciaCepService);
@@ -110,7 +110,7 @@ class ReservaServiceTest {
         when(store.configurado()).thenReturn(true);
         org.mockito.Mockito.doThrow(new ReservaIdempotenteException()).when(store).inserir(org.mockito.ArgumentMatchers.anyMap());
 
-        var resultado = service.criar(requestValido(), "idem-repetida");
+        var resultado = service.criar(requestValido(), "idem-repetida", null);
 
         assertThat(resultado.novo()).isFalse();
     }
@@ -121,10 +121,24 @@ class ReservaServiceTest {
         when(store.configurado()).thenReturn(true);
         org.mockito.Mockito.doThrow(new RuntimeException("timeout")).when(store).inserir(org.mockito.ArgumentMatchers.anyMap());
 
-        assertThatThrownBy(() -> service.criar(requestValido(), "idem-6"))
+        assertThatThrownBy(() -> service.criar(requestValido(), "idem-6", null))
                 .isInstanceOfSatisfying(ReservaException.class, e -> {
                     assertThat(e.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
                     assertThat(e.getCode()).isEqualTo("DB_ERROR");
                 });
+    }
+
+    @Test
+    void criar_comTutorIdAutenticado_usaEleEmVezDoTutorIdDoCorpo() {
+        when(distanciaCepService.verificar("04321000")).thenReturn(CoberturaResultado.calculado(1.0, true));
+        when(store.configurado()).thenReturn(true);
+        var req = new ReservaRequest("passeio_30", "Amanhã", "08:30", false,
+                new EnderecoRequest("04321-000", "123", ""), "11912345678", "tutor-do-corpo-nao-confiavel");
+
+        service.criar(req, "idem-auth", "auth0|sub-real");
+
+        var captor = org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
+        verify(store).inserir(captor.capture());
+        assertThat(captor.getValue().get("tutor_id")).isEqualTo("auth0|sub-real");
     }
 }

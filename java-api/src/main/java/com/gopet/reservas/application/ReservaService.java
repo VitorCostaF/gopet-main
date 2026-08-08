@@ -39,7 +39,13 @@ public class ReservaService {
         this.store = store;
     }
 
-    public ReservaResultado criar(ReservaRequest req, String idempotencyKey) {
+    /**
+     * @param tutorIdAutenticado "sub" do token Auth0 validado (ver SecurityConfig/ReservaController),
+     *                           ou null quando não há Auth0 configurado/token. Quando presente, é
+     *                           SEMPRE usado no lugar de {@code req.tutorId()} — o valor do corpo
+     *                           não é confiável (o cliente pode mandar qualquer id).
+     */
+    public ReservaResultado criar(ReservaRequest req, String idempotencyKey, String tutorIdAutenticado) {
         if (isBlank(idempotencyKey))
             throw new ReservaException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Header Idempotency-Key é obrigatório.");
 
@@ -66,9 +72,11 @@ public class ReservaService {
             return new ReservaResultado(reserva, true);
         }
 
+        String tutorId = tutorIdAutenticado != null ? tutorIdAutenticado : req.tutorId();
+
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("id", reserva.id());
-        row.put("tutor_id", req.tutorId());
+        row.put("tutor_id", tutorId);
         row.put("servico", req.servico());
         row.put("inicio", Instant.now().toString()); // TODO: converter dia+hora reais no fechamento da agenda
         row.put("endereco", Map.of("cep", cep, "numero", numero, "instrucoes", instrucoes));

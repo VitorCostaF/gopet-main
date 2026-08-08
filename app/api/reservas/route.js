@@ -68,7 +68,10 @@ export async function POST(req) {
   if (url && srk) {
     try {
       const admin = createClient(url, srk, { auth: { persistSession: false } });
-      // Nota: em produção, tutor_id vem da sessão autenticada (cookie via @supabase/ssr).
+      // ⚠️ Rota aparentemente sem uso hoje — o checkout (app/reservar/[slug]/page.js) chama
+      // POST /reservas direto no java-api, que já valida o Auth0 e resolve o tutor_id real a
+      // partir do token (ver java-api SecurityConfig/ReservaController). Aqui o tutor_id ainda
+      // vem cru do corpo, sem validação — não usar sem revisar antes.
       await admin.from("reservas").insert({
         id: reserva.id,
         tutor_id: body.tutor_id ?? null,

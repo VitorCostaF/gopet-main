@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { C, F, Btn } from "@/components/ui";
 import { DEMO, brl } from "@/lib/supabase";
-import { javaApiFetch } from "@/lib/javaApi";
+import { javaApiFetch, tokenJavaApi } from "@/lib/javaApi";
 import { useSession } from "@/lib/auth";
 
 const DIAS = ["Amanhã", "Sáb", "Dom", "Seg"];
@@ -80,9 +80,16 @@ export default function Reservar() {
     setErro(null);
     try {
       // Reserva criada direto no gopet-java-api, que já dispara a confirmação por WhatsApp.
+      // Com Auth0 configurado, o java-api exige o access token e usa o "sub" dele como tutor_id
+      // real (ver SecurityConfig/ReservaController no java-api) — tutor_id no corpo abaixo só
+      // vale como fallback em modo demo/sem Auth0.
+      const token = await tokenJavaApi();
       const resp = await javaApiFetch("/reservas", {
         method: "POST",
-        headers: { "Idempotency-Key": crypto.randomUUID() },
+        headers: {
+          "Idempotency-Key": crypto.randomUUID(),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ servico: servico.id, dia, hora, dois_pets: pets2, endereco, whatsapp, tutor_id: user.id }),
       });
       const data = await resp.json();

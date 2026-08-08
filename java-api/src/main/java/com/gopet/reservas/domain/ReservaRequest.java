@@ -25,6 +25,9 @@ public record ReservaRequest(
         @Telefone
         String whatsapp,
 
+        // Usado só como fallback quando não há token Auth0 autenticado (modo demo/sem Auth0
+        // configurado) — com Auth0 ativo, o tutor_id real vem do "sub" do access token validado
+        // (ver SecurityConfig e ReservaController), nunca deste campo.
         @JsonProperty("tutor_id") String tutorId
 ) {
 }

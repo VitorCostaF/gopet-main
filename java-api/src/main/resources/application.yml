@@ -54,6 +54,18 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
+# Auth0 — valida o access token no POST /reservas (Resource Server) e usa o "sub" do token
+# como tutor_id real, em vez de confiar no valor enviado pelo corpo da requisição (ver
+# SecurityConfig e ReservaController). Sem AUTH0_DOMAIN configurado, a API roda sem exigir
+# autenticação (mesmo comportamento de antes desta integração), pra continuar subindo sem
+# depender de um tenant Auth0 em dev/local.
+auth0:
+  domain: ${AUTH0_DOMAIN:}
+  # Identifier da API cadastrada no Auth0 (Applications > APIs > Identifier), usado como
+  # audience esperada no token. Precisa ser IGUAL ao AUTH0_AUDIENCE configurado no Next.js
+  # (ver .env.example na raiz do projeto) — é o mesmo valor dos dois lados.
+  audience: ${AUTH0_AUDIENCE:}
+
 # CEP de referência (base) da GO PET e raio de atendimento a partir dele.
 # Geolocalização por CEP tenta, nessa ordem: BrasilAPI -> Geoapify -> Nominatim (ver CepGeolocalizacaoConfig).
 cobertura:

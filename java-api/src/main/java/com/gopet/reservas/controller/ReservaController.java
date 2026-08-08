@@ -6,6 +6,8 @@ import com.gopet.reservas.application.ReservaService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -26,8 +28,14 @@ public class ReservaController {
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> criar(@Valid @RequestBody ReservaRequest req,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
-        ReservaResultado resultado = reservaService.criar(req, idempotencyKey);
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal Jwt jwt) {
+        // Com Auth0 configurado (ver SecurityConfig), o tutor_id real vem do "sub" do token —
+        // o valor enviado no corpo (req.tutorId()) só serve de fallback em modo demo/sem Auth0,
+        // pra manter o fluxo funcionando sem exigir um tenant configurado. `jwt` é null nesse
+        // modo (sem token exigido) e quando não há Authorization válido.
+        String tutorIdAutenticado = jwt != null ? jwt.getSubject() : null;
+        ReservaResultado resultado = reservaService.criar(req, idempotencyKey, tutorIdAutenticado);
         HttpStatus status = resultado.novo() ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(Map.of("reserva", resultado.reserva()));
     }

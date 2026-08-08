@@ -1,6 +1,8 @@
 package com.gopet.reservas.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gopet.config.SecurityConfig;
+import com.gopet.config.WebConfig;
 import com.gopet.reservas.application.ReservaService;
 import com.gopet.reservas.domain.EnderecoRequest;
 import com.gopet.reservas.domain.Reserva;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ReservaController.class)
+@Import({SecurityConfig.class, WebConfig.class})
 class ReservaControllerTest {
 
     @Autowired
@@ -103,7 +107,7 @@ class ReservaControllerTest {
     void criar_dadosValidos_delegaParaOServico() throws Exception {
         Reserva reserva = new Reserva("id-1", "passeio_30", "Amanhã", "08:30", false,
                 new EnderecoRequest("04321000", "123", ""), "confirmada", 3500, "11912345678");
-        when(reservaService.criar(any(), anyString())).thenReturn(new ReservaResultado(reserva, true));
+        when(reservaService.criar(any(), anyString(), any())).thenReturn(new ReservaResultado(reserva, true));
 
         mockMvc.perform(post("/reservas")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -111,6 +115,6 @@ class ReservaControllerTest {
                         .content(requestValidoJson()))
                 .andExpect(status().isCreated());
 
-        verify(reservaService).criar(any(), anyString());
+        verify(reservaService).criar(any(), anyString(), any());
     }
 }

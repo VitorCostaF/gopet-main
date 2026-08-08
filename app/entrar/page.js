@@ -1,43 +1,92 @@
 "use client";
-// app/entrar/page.js — Entrar/criar conta (e-mail+senha ou Google), com redirecionamento
-// de volta pra onde o tutor estava indo (?next=), usado pelo checkout de reserva.
+// app/entrar/page.js — Entrar/criar conta, com redirecionamento de volta pra onde o tutor
+// estava indo (?next=), usado pelo checkout de reserva (ver app/reservar/[slug]/page.js).
+//
+// Modo real (Auth0 configurado): e-mail/senha e Google acontecem na Universal Login do Auth0 —
+// esta página só linka pra lá (ver lib/auth.js linkEntrar/linkCriarConta/linkGoogle). Não existe
+// formulário de senha aqui: quem valida credenciais é o Auth0.
+// Modo demo (sem Auth0 configurado): formulário fake, qualquer e-mail/senha funciona, sessão
+// simulada em localStorage — pra manter o fluxo login → reserva usável em dev sem tenant Auth0.
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { C, F, Btn } from "@/components/ui";
-import { DEMO_MODE } from "@/lib/supabase";
-import { entrarComSenha, criarConta, entrarComGoogle } from "@/lib/auth";
-
-function traduzErro(mensagem) {
-  const m = String(mensagem || "");
-  if (/invalid login credentials/i.test(m)) return "E-mail ou senha incorretos.";
-  if (/already registered|user already exists/i.test(m)) return "Já existe uma conta com esse e-mail — tente entrar.";
-  if (/password should be at least/i.test(m)) return "A senha precisa ter pelo menos 6 caracteres.";
-  return "Não conseguimos concluir agora. Tente de novo.";
-}
+import { DEMO_MODE, entrarComSenhaDemo, entrarComGoogleDemo, linkEntrar, linkCriarConta, linkGoogle } from "@/lib/auth";
 
 function Formulario() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/minha-conta";
 
+  if (!DEMO_MODE) return <FormularioAuth0 next={next} />;
+  return <FormularioDemo next={next} router={router} />;
+}
+
+function FormularioAuth0({ next }) {
+  return (
+    <main className="max-w-sm mx-auto px-5 py-14">
+      <h1 style={{ fontFamily: F.display, fontSize: 28, color: C.brand, fontWeight: 700 }}>Entrar</h1>
+      <p className="mt-1" style={{ color: C.inkSoft, fontSize: 14 }}>
+        Pra reservar, primeiro entre na sua conta GO PET. Você vai continuar no login seguro do Auth0.
+      </p>
+
+      <a
+        href={linkGoogle(next)}
+        className="mt-6 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold"
+        style={{ background: C.white, color: C.ink, border: `2px solid ${C.mint}` }}
+      >
+        <GoogleIcone /> Continuar com Google
+      </a>
+
+      <div className="flex items-center gap-3 my-5">
+        <div className="flex-1 h-px" style={{ background: C.mint }} />
+        <span className="text-xs" style={{ color: C.inkSoft, fontFamily: F.mono }}>OU</span>
+        <div className="flex-1 h-px" style={{ background: C.mint }} />
+      </div>
+
+      <a
+        href={linkEntrar(next)}
+        className="block text-center px-5 py-3 rounded-xl font-semibold"
+        style={{ fontFamily: F.body, fontSize: 15, background: C.brand, color: C.paper }}
+      >
+        Entrar com e-mail e senha
+      </a>
+
+      <p className="mt-5 text-center text-sm" style={{ color: C.inkSoft }}>
+        Ainda não tem conta?{" "}
+        <a href={linkCriarConta(next)} className="underline font-semibold" style={{ color: C.brand }}>
+          Criar conta
+        </a>
+      </p>
+    </main>
+  );
+}
+
+function traduzErro(mensagem) {
+  const m = String(mensagem || "");
+  if (/password should be at least/i.test(m)) return "A senha precisa ter pelo menos 6 caracteres.";
+  return "Não conseguimos concluir agora. Tente de novo.";
+}
+
+function FormularioDemo({ next, router }) {
   const [modo, setModo] = useState("entrar"); // "entrar" | "criar"
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState(null);
 
-  const enviar = async (e) => {
+  const enviar = (e) => {
     e.preventDefault();
     setEnviando(true);
     setErro(null);
-    const acao = modo === "entrar" ? entrarComSenha : criarConta;
-    const { error } = await acao(email, senha);
-    setEnviando(false);
-    if (error) {
-      setErro(traduzErro(error.message));
-      return;
+    try {
+      if (senha.length < 6) throw new Error("password should be at least 6 characters");
+      entrarComSenhaDemo(email);
+      router.push(next);
+    } catch (err) {
+      setErro(traduzErro(err.message));
+    } finally {
+      setEnviando(false);
     }
-    router.push(next);
   };
 
   return (
@@ -49,15 +98,14 @@ function Formulario() {
         Pra reservar, primeiro entre na sua conta GO PET.
       </p>
 
-      {DEMO_MODE && (
-        <div className="mt-4 rounded-xl p-3 text-xs" style={{ background: C.amberSoft, color: "#8A5A14" }}>
-          Modo demo: qualquer e-mail/senha funciona, sem enviar nada de verdade.
-        </div>
-      )}
+      <div className="mt-4 rounded-xl p-3 text-xs" style={{ background: C.amberSoft, color: "#8A5A14" }}>
+        Modo demo: qualquer e-mail/senha funciona, sem enviar nada de verdade. Configure o Auth0
+        (ver .env.example) pra login real com e-mail/senha e Google.
+      </div>
 
       <button
         type="button"
-        onClick={() => entrarComGoogle(next)}
+        onClick={() => { entrarComGoogleDemo(); router.push(next); }}
         className="mt-6 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold"
         style={{ background: C.white, color: C.ink, border: `2px solid ${C.mint}` }}
       >
