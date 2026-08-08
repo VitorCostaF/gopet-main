@@ -1,11 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════
--- GO PET · Histórico de consultas de CEP · MySQL
--- Rodar direto no servidor MySQL usado pelo java-api (ver MYSQL_URL).
+-- GO PET · Histórico de consultas de CEP · MySQL (migração Flyway)
+-- Roda só via `mvn flyway:migrate` (java-api/), nunca automaticamente no
+-- boot da aplicação — ver spring.flyway.enabled=false no application.yml.
 -- Guarda cada consulta feita em GET /cobertura: cep pesquisado, cep base
 -- da GO PET, distância calculada e o raio máximo de atendimento vigente.
 -- ═══════════════════════════════════════════════════════════════
 
-CREATE TABLE IF NOT EXISTS consultas_cep (
+CREATE TABLE consultas_cep (
   id                BIGINT AUTO_INCREMENT PRIMARY KEY,
   cep_consultado    VARCHAR(8) NOT NULL,
   cep_base          VARCHAR(8) NOT NULL,

@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: gopet-java-api
+  # Flyway nunca migra sozinho no boot — só via `mvn flyway:migrate` explícito (ver pom.xml).
+  flyway:
+    enabled: false
 
 # Provider de envio de WhatsApp: zapi (padrão) ou evolution (self-hosted).
 whatsapp:
@@ -38,7 +41,8 @@ db:
   username: ${DB_USERNAME:}
   password: ${DB_PASSWORD:}
 
-# MySQL — histórico de consultas de CEP (tabela consultas_cep, ver mysql/schema.sql).
+# MySQL — histórico de consultas de CEP (tabela consultas_cep, migração em
+# src/main/resources/db/migration, aplicada via `mvn flyway:migrate`).
 # Sem MYSQL_URL, o histórico simplesmente não é gravado (GET /cobertura segue funcionando normalmente).
 mysql:
   url: ${MYSQL_URL:}

@@ -7,7 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
-/** Persiste o histórico de consultas de CEP no MySQL (tabela `consultas_cep`, ver mysql/schema.sql). */
+/**
+ * Persiste o histórico de consultas de CEP no MySQL (tabela `consultas_cep`).
+ * Schema criado via migração Flyway (src/main/resources/db/migration) — rode `mvn flyway:migrate`.
+ */
 @Component
 public class MySqlConsultaCepStore implements ConsultaCepStore {
 

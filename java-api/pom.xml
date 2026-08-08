@@ -49,6 +49,19 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!--
+      Flyway: só roda via `mvn flyway:migrate` (plugin abaixo) — spring.flyway.enabled=false
+      no application.yml garante que a aplicação nunca migra sozinha ao subir.
+    -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
@@ -67,6 +80,37 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+
+      <!--
+        Flyway não é ligado a nenhuma fase do build (sem <executions>), então "mvn install"/
+        "mvn test" etc. nunca disparam migração — só um `mvn flyway:migrate` explícito roda.
+        Credenciais vêm de MYSQL_URL/MYSQL_USERNAME/MYSQL_PASSWORD (mesmas do application.yml).
+      -->
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <version>${flyway.version}</version>
+        <configuration>
+          <url>${env.MYSQL_URL}</url>
+          <user>${env.MYSQL_USERNAME}</user>
+          <password>${env.MYSQL_PASSWORD}</password>
+          <locations>
+            <location>filesystem:src/main/resources/db/migration</location>
+          </locations>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+            <version>${flyway.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql.version}</version>
+          </dependency>
+        </dependencies>
       </plugin>
     </plugins>
   </build>
