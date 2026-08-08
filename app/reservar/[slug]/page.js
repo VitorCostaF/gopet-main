@@ -133,7 +133,7 @@ export default function Reservar() {
               {cepStatus === "ok" && <p className="mt-1 text-xs font-semibold" style={{ color: C.brand }}>Atendemos essa região 🎉</p>}
               {cepStatus === "fora" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Ainda não atendemos esse CEP.</p>}
               {cepStatus === "cepNaoEncontrado" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Não conseguimos localizar esse CEP. Confira o número e tente de novo.</p>}
-              {cepStatus === "erro" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Não conseguimos checar agora. Tente de novo.</p>}
+              {cepStatus === "erro" && <p className="mt-1 text-xs" style={{ color: C.danger }}>Não conseguimos checar agora. Tente de novo mais tarde.</p>}
             </div>
             <div>
               <label className="text-xs font-bold" style={{ fontFamily: F.mono, color: C.inkSoft }}>NÚMERO</label>

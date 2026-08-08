@@ -38,6 +38,13 @@ db:
   username: ${DB_USERNAME:}
   password: ${DB_PASSWORD:}
 
+# MySQL — histórico de consultas de CEP (tabela consultas_cep, ver mysql/schema.sql).
+# Sem MYSQL_URL, o histórico simplesmente não é gravado (GET /cobertura segue funcionando normalmente).
+mysql:
+  url: ${MYSQL_URL:}
+  username: ${MYSQL_USERNAME:}
+  password: ${MYSQL_PASSWORD:}
+
 # Origens do front-end autorizadas a chamar esta API direto do navegador (separadas por vírgula).
 app:
   cors:

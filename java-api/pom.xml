@@ -42,6 +42,13 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- MySQL: histórico de consultas de CEP (tabela consultas_cep, ver MySqlJdbcConfig). -->
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>

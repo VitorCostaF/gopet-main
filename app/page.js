@@ -62,7 +62,7 @@ export default function Home() {
             {cepStatus === "ok" && <p className="mt-2 font-semibold" style={{ color: C.brand }}>Atendemos! 🎉 Escolha um serviço abaixo.</p>}
             {cepStatus === "fora" && <p className="mt-2" style={{ color: C.danger }}>Ainda não chegamos aí — mas estamos expandindo pela Zona Sul.</p>}
             {cepStatus === "cepNaoEncontrado" && <p className="mt-2" style={{ color: C.danger }}>Não conseguimos localizar esse CEP. Confira o número e tente de novo.</p>}
-            {cepStatus === "erro" && <p className="mt-2" style={{ color: C.danger }}>Não conseguimos checar agora. Tente de novo.</p>}
+            {cepStatus === "erro" && <p className="mt-2" style={{ color: C.danger }}>Não conseguimos checar agora. Tente de novo mais tarde.</p>}
           </div>
           <div>
             <TrilhaAoVivo altura={230} />

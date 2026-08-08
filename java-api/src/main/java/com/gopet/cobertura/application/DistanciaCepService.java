@@ -3,6 +3,8 @@ package com.gopet.cobertura.application;
 import com.gopet.cobertura.domain.CepGeolocalizacaoProvider;
 import com.gopet.cobertura.domain.CepNaoEncontradoException;
 import com.gopet.cobertura.domain.CoberturaResultado;
+import com.gopet.cobertura.domain.ConsultaCepRegistro;
+import com.gopet.cobertura.domain.ConsultaCepStore;
 import com.gopet.cobertura.domain.Coordenadas;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,13 +17,16 @@ public class DistanciaCepService {
     private static final double RAIO_TERRA_KM = 6371;
 
     private final CepGeolocalizacaoProvider cepGeolocalizacaoProvider;
+    private final ConsultaCepStore consultaCepStore;
     private final String cepBase;
     private final double raioAtendimentoKm;
 
     public DistanciaCepService(CepGeolocalizacaoProvider cepGeolocalizacaoProvider,
+            ConsultaCepStore consultaCepStore,
             @Value("${cobertura.cep-base}") String cepBase,
             @Value("${cobertura.raio-km}") double raioAtendimentoKm) {
         this.cepGeolocalizacaoProvider = cepGeolocalizacaoProvider;
+        this.consultaCepStore = consultaCepStore;
         this.cepBase = cepBase;
         this.raioAtendimentoKm = raioAtendimentoKm;
     }
@@ -41,9 +46,26 @@ public class DistanciaCepService {
 
             log.debug("Distância calculada para o CEP {}: {} km", cepLimpo, distanciaKm);
 
-            return CoberturaResultado.calculado(distanciaKm, distanciaKm <= raioAtendimentoKm);
+            CoberturaResultado resultado = CoberturaResultado.calculado(distanciaKm, distanciaKm <= raioAtendimentoKm);
+            registrarConsulta(cepLimpo, resultado);
+            return resultado;
         } catch (CepNaoEncontradoException e) {
-            return CoberturaResultado.falha("CEP_NAO_ENCONTRADO");
+            CoberturaResultado resultado = CoberturaResultado.falha("CEP_NAO_ENCONTRADO");
+            registrarConsulta(cepLimpo, resultado);
+            return resultado;
+        }
+    }
+
+    /** Grava o histórico da consulta no MySQL — best-effort, nunca deve derrubar a resposta de /cobertura. */
+    private void registrarConsulta(String cepConsultado, CoberturaResultado resultado) {
+        if (!consultaCepStore.configurado()) {
+            return;
+        }
+        try {
+            consultaCepStore.salvar(new ConsultaCepRegistro(cepConsultado, cepBase, resultado.distanciaKm(),
+                    raioAtendimentoKm, resultado.atende(), resultado.motivo()));
+        } catch (Exception e) {
+            log.warn("Falha ao salvar histórico de consulta do CEP {}: {}", cepConsultado, e.getMessage());
         }
     }
 
