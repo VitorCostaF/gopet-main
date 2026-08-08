@@ -1,17 +1,26 @@
 "use client";
 // app/reservar/[slug]/page.js — Checkout em 3 etapas
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { C, F, Btn } from "@/components/ui";
 import { DEMO, brl } from "@/lib/supabase";
 import { javaApiFetch } from "@/lib/javaApi";
+import { useSession } from "@/lib/auth";
 
 const DIAS = ["Amanhã", "Sáb", "Dom", "Seg"];
 
 export default function Reservar() {
   const { slug } = useParams();
   const router = useRouter();
+  const { user, carregando } = useSession();
   const servico = useMemo(() => DEMO.servicos.find((s) => s.id === slug && s.ativo), [slug]);
+
+  // Exige login antes de reservar — sem sessão, manda pro cadastro/entrar e volta pra cá depois.
+  useEffect(() => {
+    if (!carregando && !user) {
+      router.replace(`/entrar?next=/reservar/${slug}`);
+    }
+  }, [carregando, user, slug, router]);
 
   const [etapa, setEtapa] = useState(1);
   const [dia, setDia] = useState(DIAS[0]);
@@ -23,6 +32,14 @@ export default function Reservar() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState(null);
   const [concluida, setConcluida] = useState(null);
+
+  if (carregando || !user) {
+    return (
+      <main className="max-w-md mx-auto px-5 py-16 text-center" style={{ color: C.inkSoft }}>
+        Verificando sua conta…
+      </main>
+    );
+  }
 
   if (!servico) {
     return (
@@ -66,7 +83,7 @@ export default function Reservar() {
       const resp = await javaApiFetch("/reservas", {
         method: "POST",
         headers: { "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({ servico: servico.id, dia, hora, dois_pets: pets2, endereco, whatsapp }),
+        body: JSON.stringify({ servico: servico.id, dia, hora, dois_pets: pets2, endereco, whatsapp, tutor_id: user.id }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error?.message || "Não foi possível concluir. Tente de novo.");

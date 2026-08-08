@@ -1,6 +1,7 @@
 import "./globals.css";
 import Link from "next/link";
 import { Logo } from "@/components/ui";
+import { NavConta } from "@/components/NavConta";
 
 export const metadata = {
   title: "GO PET · Dog walker no Jabaquara | Passeio, creche e leva e traz",
@@ -46,13 +47,7 @@ export default function RootLayout({ children }) {
             <span className="text-2xl">🐾</span>
             <Logo />
           </Link>
-          <Link
-            href="/minha-conta"
-            className="px-5 py-2 rounded-xl font-semibold"
-            style={{ background: "#1D3F2F", color: "#F7F6F2" }}
-          >
-            Minha conta
-          </Link>
+          <NavConta />
         </nav>
         {children}
         <footer className="px-5 py-8 text-center" style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: "#5A6157" }}>
