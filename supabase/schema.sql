@@ -14,44 +14,86 @@ do $$ begin
   create type status_passeador as enum ('em_analise','pendente_documentos','aprovado','suspenso','desligado');
 exception when duplicate_object then null; end $$;
 
--- ── Perfis (espelha auth.users) ────────────────────────────────
+-- ── Perfis (tutor/passeador/admin) ──────────────────────────────
+-- id = "sub" do token Auth0 (ex.: "auth0|507f...", "google-oauth2|11371...") — TEXT, não uuid:
+-- a autenticação é via Auth0 (ver AUTH0_DOMAIN no .env), não via Supabase Auth, então não há
+-- linha correspondente em auth.users pra referenciar. As linhas de perfis são criadas/atualizadas
+-- pelo próprio java-api em PUT /usuarios/me (ver com.gopet.usuarios), a partir do token validado.
 create table if not exists perfis (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id text primary key,
   role papel not null default 'tutor',
   nome text not null default '',
+  email text,
   telefone text,
   cep_padrao text,
   endereco_padrao jsonb,
-  indicado_por uuid references perfis(id),
+  indicado_por text references perfis(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
 );
+alter table perfis add column if not exists email text;
 
--- trigger: cria perfil ao registrar usuário
-create or replace function criar_perfil() returns trigger
-language plpgsql security definer set search_path = public as $$
+-- ── Migração: perfis/tutor_id de uuid → text (Auth0 "sub") ──────────────────────────────────
+-- Instalações que rodaram uma versão anterior deste schema (perfis.id uuid, espelhando
+-- auth.users do Supabase Auth) precisam migrar as colunas pra text antes de usar Auth0. Roda uma
+-- vez só — o bloco é pulado se perfis.id já for text (instalação nova ou já migrada).
+do $$
 begin
-  insert into perfis (id, nome) values (new.id, coalesce(new.raw_user_meta_data->>'nome',''))
-  on conflict (id) do nothing;
-  return new;
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'perfis' and column_name = 'id' and data_type = 'uuid'
+  ) then
+    drop trigger if exists on_auth_user_created on auth.users;
+    drop function if exists criar_perfil();
+
+    alter table perfis drop constraint if exists perfis_id_fkey;
+    alter table perfis drop constraint if exists perfis_indicado_por_fkey;
+    alter table pets drop constraint if exists pets_tutor_id_fkey;
+    alter table passeadores drop constraint if exists passeadores_usuario_id_fkey;
+    alter table reservas drop constraint if exists reservas_tutor_id_fkey;
+    alter table avaliacoes drop constraint if exists avaliacoes_tutor_id_fkey;
+    alter table recorrencias drop constraint if exists recorrencias_tutor_id_fkey;
+    alter table indicacoes drop constraint if exists indicacoes_indicador_id_fkey;
+
+    alter table perfis alter column id type text using id::text;
+    alter table perfis alter column indicado_por type text using indicado_por::text;
+    alter table pets alter column tutor_id type text using tutor_id::text;
+    alter table passeadores alter column usuario_id type text using usuario_id::text;
+    alter table reservas alter column tutor_id type text using tutor_id::text;
+    alter table avaliacoes alter column tutor_id type text using tutor_id::text;
+    alter table recorrencias alter column tutor_id type text using tutor_id::text;
+    alter table indicacoes alter column indicador_id type text using indicador_id::text;
+
+    alter table perfis add constraint perfis_indicado_por_fkey foreign key (indicado_por) references perfis(id);
+    alter table pets add constraint pets_tutor_id_fkey foreign key (tutor_id) references perfis(id);
+    alter table passeadores add constraint passeadores_usuario_id_fkey foreign key (usuario_id) references perfis(id);
+    alter table reservas add constraint reservas_tutor_id_fkey foreign key (tutor_id) references perfis(id);
+    alter table avaliacoes add constraint avaliacoes_tutor_id_fkey foreign key (tutor_id) references perfis(id);
+    alter table recorrencias add constraint recorrencias_tutor_id_fkey foreign key (tutor_id) references perfis(id);
+    alter table indicacoes add constraint indicacoes_indicador_id_fkey foreign key (indicador_id) references perfis(id);
+  end if;
 end $$;
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created after insert on auth.users
-  for each row execute function criar_perfil();
 
 -- ── Pets ───────────────────────────────────────────────────────
+-- Cadastro obrigatório: nome, idade, porte, reativo, agressivo_pessoas, vacinas_em_dia.
+-- Opcionais: peso_kg, restricoes_saude (problema/doença), observacoes.
 create table if not exists pets (
   id uuid primary key default gen_random_uuid(),
-  tutor_id uuid not null references perfis(id),
+  tutor_id text not null references perfis(id),
   nome text not null check (char_length(nome) between 1 and 40),
+  idade_anos smallint check (idade_anos between 0 and 30),
   raca text,
   porte porte_pet not null,
   peso_kg numeric check (peso_kg between 0.5 and 90),
+  reativo boolean not null default false,
+  agressivo_pessoas boolean not null default false,
+  vacinas_em_dia boolean not null default false,
   convive_com_caes convivio not null default 'nao_sei',
   temperamento text,
   restricoes_saude text,
   alimentacao text,
+  observacoes text check (char_length(observacoes) <= 1000),
   instrucoes_acesso text check (char_length(instrucoes_acesso) <= 500),
   veterinario_ref jsonb,           -- { nome, telefone }
   foto_url text,
@@ -60,11 +102,16 @@ create table if not exists pets (
   deleted_at timestamptz
 );
 create index if not exists idx_pets_tutor on pets(tutor_id) where deleted_at is null;
+alter table pets add column if not exists idade_anos smallint check (idade_anos between 0 and 30);
+alter table pets add column if not exists reativo boolean not null default false;
+alter table pets add column if not exists agressivo_pessoas boolean not null default false;
+alter table pets add column if not exists vacinas_em_dia boolean not null default false;
+alter table pets add column if not exists observacoes text check (char_length(observacoes) <= 1000);
 
 -- ── Passeadores ────────────────────────────────────────────────
 create table if not exists passeadores (
   id uuid primary key default gen_random_uuid(),
-  usuario_id uuid unique references perfis(id),
+  usuario_id text unique references perfis(id),
   slug text unique not null,
   nome_publico text not null,
   bio text,
@@ -106,7 +153,7 @@ insert into cobertura_ceps values ('043','Jabaquara e entorno') on conflict do n
 -- ── Reservas ───────────────────────────────────────────────────
 create table if not exists reservas (
   id uuid primary key default gen_random_uuid(),
-  tutor_id uuid not null references perfis(id),
+  tutor_id text not null references perfis(id),
   passeador_id uuid references passeadores(id),
   recorrencia_id uuid,
   servico tipo_servico not null references servicos(id),
@@ -129,6 +176,7 @@ create unique index if not exists idx_reservas_idem on reservas(idempotency_key)
 create index if not exists idx_reservas_tutor on reservas(tutor_id, inicio desc);
 create index if not exists idx_reservas_passeador_dia on reservas(passeador_id, inicio);
 
+-- Vínculo reserva ↔ pet(s) — uma reserva pode levar mais de um pet do mesmo tutor.
 create table if not exists reserva_pets (
   reserva_id uuid references reservas(id) on delete cascade,
   pet_id uuid references pets(id),
@@ -152,7 +200,7 @@ create table if not exists passeios (
 create table if not exists avaliacoes (
   id uuid primary key default gen_random_uuid(),
   reserva_id uuid unique not null references reservas(id),
-  tutor_id uuid not null references perfis(id),
+  tutor_id text not null references perfis(id),
   passeador_id uuid not null references passeadores(id),
   nota int not null check (nota between 1 and 5),
   comentario text check (char_length(comentario) <= 500),
@@ -175,7 +223,7 @@ create trigger trg_nota after insert on avaliacoes for each row execute function
 -- ── Indicações / cupons ────────────────────────────────────────
 create table if not exists indicacoes (
   id uuid primary key default gen_random_uuid(),
-  indicador_id uuid not null references perfis(id),
+  indicador_id text not null references perfis(id),
   codigo text unique not null,
   credito_centavos int not null default 1500,
   usos int not null default 0,
@@ -197,7 +245,7 @@ exception when duplicate_object then null; end $$;
 
 create table if not exists recorrencias (
   id uuid primary key default gen_random_uuid(),
-  tutor_id uuid references perfis(id),
+  tutor_id text references perfis(id),
   passeador_fixo_id uuid references passeadores(id),
   servico tipo_servico not null,
   dias_semana int[] not null check (array_length(dias_semana,1) between 1 and 5),
@@ -216,7 +264,8 @@ create unique index if not exists idx_recorrencias_idem on recorrencias(idempote
 create index if not exists idx_recorrencias_tutor on recorrencias(tutor_id) where deleted_at is null;
 
 alter table recorrencias enable row level security;
-create policy recorrencias_sel on recorrencias for select using (auth.uid() = tutor_id);
+drop policy if exists recorrencias_sel on recorrencias;
+create policy recorrencias_sel on recorrencias for select using (auth.uid()::text = tutor_id);
 
 -- ── Auditoria de status ────────────────────────────────────────
 create table if not exists historico_status (
@@ -228,6 +277,12 @@ create table if not exists historico_status (
 );
 
 -- ═══ ROW LEVEL SECURITY ════════════════════════════════════════
+-- Nota: hoje o acesso a essas tabelas acontece só via java-api (service role key, ignora RLS) —
+-- ver com.gopet.*.infra.Supabase*Store. As policies abaixo ficam como defesa em profundidade
+-- pra se o front-end algum dia falar direto com o Supabase usando o JWT do usuário. Como o login
+-- é via Auth0 (não Supabase Auth), auth.uid() só funciona nesse cenário se o Supabase estiver
+-- configurado pra aceitar o JWT do Auth0 como terceiro (Third-Party Auth) — sem isso, auth.uid()
+-- é sempre null e as policies abaixo simplesmente bloqueiam acesso via anon/authenticated key.
 alter table perfis enable row level security;
 alter table pets enable row level security;
 alter table reservas enable row level security;
@@ -239,31 +294,44 @@ alter table servicos enable row level security;
 alter table cobertura_ceps enable row level security;
 
 -- perfis: dono lê/edita o próprio
-create policy perfil_proprio on perfis for select using (auth.uid() = id);
-create policy perfil_editar on perfis for update using (auth.uid() = id);
+drop policy if exists perfil_proprio on perfis;
+create policy perfil_proprio on perfis for select using (auth.uid()::text = id);
+drop policy if exists perfil_editar on perfis;
+create policy perfil_editar on perfis for update using (auth.uid()::text = id);
 
 -- pets: tutor gerencia os próprios
-create policy pets_sel on pets for select using (auth.uid() = tutor_id);
-create policy pets_ins on pets for insert with check (auth.uid() = tutor_id);
-create policy pets_upd on pets for update using (auth.uid() = tutor_id);
+drop policy if exists pets_sel on pets;
+create policy pets_sel on pets for select using (auth.uid()::text = tutor_id);
+drop policy if exists pets_ins on pets;
+create policy pets_ins on pets for insert with check (auth.uid()::text = tutor_id);
+drop policy if exists pets_upd on pets;
+create policy pets_upd on pets for update using (auth.uid()::text = tutor_id);
 
 -- reservas: tutor vê as próprias; escrita via API (service role)
-create policy reservas_sel on reservas for select using (auth.uid() = tutor_id);
+drop policy if exists reservas_sel on reservas;
+create policy reservas_sel on reservas for select using (auth.uid()::text = tutor_id);
+drop policy if exists rpets_sel on reserva_pets;
 create policy rpets_sel on reserva_pets for select
-  using (exists (select 1 from reservas r where r.id = reserva_id and r.tutor_id = auth.uid()));
+  using (exists (select 1 from reservas r where r.id = reserva_id and r.tutor_id = auth.uid()::text));
+drop policy if exists passeios_sel on passeios;
 create policy passeios_sel on passeios for select
-  using (exists (select 1 from reservas r where r.id = reserva_id and r.tutor_id = auth.uid()));
+  using (exists (select 1 from reservas r where r.id = reserva_id and r.tutor_id = auth.uid()::text));
 
 -- avaliações: tutor cria a da própria reserva concluída
+drop policy if exists aval_ins on avaliacoes;
 create policy aval_ins on avaliacoes for insert with check (
-  auth.uid() = tutor_id and exists (
-    select 1 from reservas r where r.id = reserva_id and r.tutor_id = auth.uid() and r.status = 'concluida')
+  auth.uid()::text = tutor_id and exists (
+    select 1 from reservas r where r.id = reserva_id and r.tutor_id = auth.uid()::text and r.status = 'concluida')
 );
-create policy aval_sel on avaliacoes for select using (publica or auth.uid() = tutor_id);
+drop policy if exists aval_sel on avaliacoes;
+create policy aval_sel on avaliacoes for select using (publica or auth.uid()::text = tutor_id);
 
 -- leitura pública: catálogo, cobertura e passeadores aprovados
+drop policy if exists servicos_pub on servicos;
 create policy servicos_pub on servicos for select using (true);
+drop policy if exists cobertura_pub on cobertura_ceps;
 create policy cobertura_pub on cobertura_ceps for select using (true);
+drop policy if exists passeadores_pub on passeadores;
 create policy passeadores_pub on passeadores for select using (status = 'aprovado' and deleted_at is null);
 
 -- ═══ STORAGE (rodar depois de criar os buckets no painel) ══════

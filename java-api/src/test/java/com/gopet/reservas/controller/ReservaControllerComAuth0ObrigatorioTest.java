@@ -64,7 +64,8 @@ class ReservaControllerComAuth0ObrigatorioTest {
                 "hora", "08:30",
                 "dois_pets", false,
                 "endereco", Map.of("cep", "04321-000", "numero", "123", "instrucoes", ""),
-                "whatsapp", "11912345678"
+                "whatsapp", "11912345678",
+                "pet_ids", java.util.List.of("pet-1")
         ));
     }
 
@@ -80,7 +81,7 @@ class ReservaControllerComAuth0ObrigatorioTest {
     @Test
     void criar_comTokenValido_usaSubDoTokenComoTutorId() throws Exception {
         Reserva reserva = new Reserva("id-1", "passeio_30", "Amanhã", "08:30", false,
-                new EnderecoRequest("04321000", "123", ""), "confirmada", 3500, "11912345678");
+                new EnderecoRequest("04321000", "123", ""), "confirmada", 3500, "11912345678", java.util.List.of("pet-1"));
         when(reservaService.criar(any(), anyString(), eq("auth0|abc123")))
                 .thenReturn(new ReservaResultado(reserva, true));
 

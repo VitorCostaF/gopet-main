@@ -21,9 +21,11 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import java.util.List;
 
 /**
- * Protege {@code POST /reservas} exigindo um access token válido do Auth0 (Resource Server) —
- * ver {@link com.gopet.reservas.controller.ReservaController}, que usa o "sub" do token como
- * tutor_id real em vez de confiar no valor enviado pelo corpo da requisição.
+ * Protege os endpoints que leem/gravam dados do tutor logado — {@code POST/GET /reservas},
+ * {@code GET/PUT /usuarios/me}, {@code GET/POST /pets} — exigindo um access token válido do
+ * Auth0 (Resource Server). Os controllers desses endpoints usam o "sub" do token como
+ * tutor_id/usuario_id real em vez de confiar no valor enviado pelo corpo/query da requisição
+ * (ver ReservaController, UsuarioController, PetController).
  * <p>
  * Sem {@code AUTH0_DOMAIN} configurado, roda em modo aberto (mesmo comportamento de antes desta
  * integração) — mesma convenção de "configurado()" usada em {@code SupabaseReservaStore},
@@ -82,6 +84,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // preflight de CORS
                         .requestMatchers(HttpMethod.GET, "/cobertura").permitAll() // checagem de CEP acontece antes do login
                         .requestMatchers(HttpMethod.POST, "/reservas").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/reservas").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/usuarios/me").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/usuarios/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/pets").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/pets").authenticated()
                         .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder)));
 

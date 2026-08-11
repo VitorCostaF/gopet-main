@@ -4,7 +4,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gopet.reservas.domain.validation.Telefone;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+
+import java.util.List;
 
 public record ReservaRequest(
         @NotBlank(message = "Serviço inválido ou indisponível.")
@@ -24,6 +27,9 @@ public record ReservaRequest(
 
         @Telefone
         String whatsapp,
+
+        @NotEmpty(message = "Escolha pelo menos um pet para a reserva.")
+        @JsonProperty("pet_ids") List<String> petIds,
 
         // Usado só como fallback quando não há token Auth0 autenticado (modo demo/sem Auth0
         // configurado) — com Auth0 ativo, o tutor_id real vem do "sub" do access token validado

@@ -2,10 +2,12 @@
 // app/reservar/[slug]/page.js — Checkout em 3 etapas
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { C, F, Btn } from "@/components/ui";
 import { DEMO, brl } from "@/lib/supabase";
-import { javaApiFetch, tokenJavaApi } from "@/lib/javaApi";
+import { javaApiFetch, tokenJavaApi, listarPets } from "@/lib/javaApi";
 import { useSession } from "@/lib/auth";
+import { useCadastroTutor } from "@/lib/cadastro";
 
 const DIAS = ["Amanhã", "Sáb", "Dom", "Seg"];
 
@@ -13,6 +15,7 @@ export default function Reservar() {
   const { slug } = useParams();
   const router = useRouter();
   const { user, carregando } = useSession();
+  const { completo: cadastroCompleto, carregando: carregandoCadastro } = useCadastroTutor();
   const servico = useMemo(() => DEMO.servicos.find((s) => s.id === slug && s.ativo), [slug]);
 
   // Exige login antes de reservar — sem sessão, manda pro cadastro/entrar e volta pra cá depois.
@@ -22,10 +25,19 @@ export default function Reservar() {
     }
   }, [carregando, user, slug, router]);
 
+  // Exige cadastro completo (nome + endereço) antes de reservar — ver lib/cadastro.js.
+  useEffect(() => {
+    if (!carregando && user && !carregandoCadastro && !cadastroCompleto) {
+      router.replace(`/minha-conta/cadastro?next=${encodeURIComponent(`/reservar/${slug}`)}`);
+    }
+  }, [carregando, user, carregandoCadastro, cadastroCompleto, slug, router]);
+
   const [etapa, setEtapa] = useState(1);
   const [dia, setDia] = useState(DIAS[0]);
   const [hora, setHora] = useState(null);
   const [pets2, setPets2] = useState(false);
+  const [pets, setPets] = useState(null);
+  const [petIds, setPetIds] = useState([]);
   const [endereco, setEndereco] = useState({ cep: "", numero: "", instrucoes: "" });
   const [cepStatus, setCepStatus] = useState(null);
   const [whatsapp, setWhatsapp] = useState("");
@@ -33,7 +45,16 @@ export default function Reservar() {
   const [erro, setErro] = useState(null);
   const [concluida, setConcluida] = useState(null);
 
-  if (carregando || !user) {
+  useEffect(() => {
+    if (!user) return;
+    listarPets(user.id).then(setPets).catch(() => setPets([]));
+  }, [user]);
+
+  const alternarPet = (id) => {
+    setPetIds((atual) => (atual.includes(id) ? atual.filter((p) => p !== id) : [...atual, id]));
+  };
+
+  if (carregando || !user || carregandoCadastro || !cadastroCompleto) {
     return (
       <main className="max-w-md mx-auto px-5 py-16 text-center" style={{ color: C.inkSoft }}>
         Verificando sua conta…
@@ -90,7 +111,7 @@ export default function Reservar() {
           "Idempotency-Key": crypto.randomUUID(),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ servico: servico.id, dia, hora, dois_pets: pets2, endereco, whatsapp, tutor_id: user.id }),
+        body: JSON.stringify({ servico: servico.id, dia, hora, dois_pets: pets2, endereco, whatsapp, pet_ids: petIds, tutor_id: user.id }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error?.message || "Não foi possível concluir. Tente de novo.");
@@ -138,7 +159,30 @@ export default function Reservar() {
             <input type="checkbox" checked={pets2} onChange={(e) => setPets2(e.target.checked)} className="w-5 h-5" style={{ accentColor: C.brand }} />
             <span>Tenho 2 cães no mesmo passeio <span style={{ color: C.inkSoft }}>(+60%)</span></span>
           </label>
-          <div className="mt-6 flex justify-end"><Btn onClick={() => setEtapa(2)} disabled={!hora}>Continuar</Btn></div>
+
+          <div className="font-bold mt-5 mb-2">Quais pets vão passear?</div>
+          {pets === null && <p className="text-sm" style={{ color: C.inkSoft }}>Carregando seus pets…</p>}
+          {pets && pets.length === 0 && (
+            <div className="rounded-xl p-4 text-sm" style={{ background: C.paper }}>
+              <p style={{ color: C.inkSoft }}>Você ainda não cadastrou nenhum pet.</p>
+              <Link href={`/minha-conta/pets/novo?next=${encodeURIComponent(`/reservar/${slug}`)}`}>
+                <Btn tom="brand" className="!py-2 !px-4 mt-2">Cadastrar pet</Btn>
+              </Link>
+            </div>
+          )}
+          {pets && pets.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {pets.map((p) => (
+                <label key={p.id} className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
+                  style={{ background: petIds.includes(p.id) ? C.brand : C.paper, color: petIds.includes(p.id) ? C.paper : C.ink, border: `1px solid ${C.mint}` }}>
+                  <input type="checkbox" checked={petIds.includes(p.id)} onChange={() => alternarPet(p.id)} className="w-4 h-4" style={{ accentColor: C.brandDeep }} />
+                  {p.nome}
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end"><Btn onClick={() => setEtapa(2)} disabled={!hora || petIds.length === 0}>Continuar</Btn></div>
         </div>
       )}
 

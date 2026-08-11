@@ -2,6 +2,7 @@ package com.gopet.reservas.application;
 
 import com.gopet.cobertura.application.DistanciaCepService;
 import com.gopet.cobertura.domain.CoberturaResultado;
+import com.gopet.pets.domain.PetStore;
 import com.gopet.reservas.domain.EnderecoRequest;
 import com.gopet.reservas.domain.ReservaException;
 import com.gopet.reservas.domain.ReservaIdempotenteException;
@@ -14,16 +15,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ReservaServiceTest {
 
     @Mock
@@ -32,17 +39,20 @@ class ReservaServiceTest {
     DistanciaCepService distanciaCepService;
     @Mock
     ReservaStore store;
+    @Mock
+    PetStore petStore;
 
     ReservaService service;
 
     @BeforeEach
     void setUp() {
-        service = new ReservaService(new ReservaConfirmacaoService(whatsappProvider), distanciaCepService, store);
+        lenient().when(petStore.configurado()).thenReturn(false); // sem checagem de posse de pet nesses testes
+        service = new ReservaService(new ReservaConfirmacaoService(whatsappProvider), distanciaCepService, store, petStore);
     }
 
     private static ReservaRequest requestValido() {
         return new ReservaRequest("passeio_30", "Amanhã", "08:30", false,
-                new EnderecoRequest("04321-000", "123", ""), "11912345678", null);
+                new EnderecoRequest("04321-000", "123", ""), "11912345678", List.of("pet-1"), null);
     }
 
     @Test
@@ -64,7 +74,7 @@ class ReservaServiceTest {
         when(distanciaCepService.verificar("04321000")).thenReturn(CoberturaResultado.calculado(1.0, true));
         when(store.configurado()).thenReturn(false);
         var req = new ReservaRequest("passeio_30", "Amanhã", "08:30", true,
-                new EnderecoRequest("04321-000", "123", ""), "11912345678", null);
+                new EnderecoRequest("04321-000", "123", ""), "11912345678", List.of("pet-1"), null);
 
         var resultado = service.criar(req, "idem-2", null);
 
@@ -96,7 +106,7 @@ class ReservaServiceTest {
     @Test
     void criar_servicoInvalido_lancaErroDeValidacao() {
         var req = new ReservaRequest("inexistente", "Amanhã", "08:30", false,
-                new EnderecoRequest("04321-000", "123", ""), "11912345678", null);
+                new EnderecoRequest("04321-000", "123", ""), "11912345678", List.of("pet-1"), null);
 
         assertThatThrownBy(() -> service.criar(req, "idem-4", null))
                 .isInstanceOfSatisfying(ReservaException.class, e ->
@@ -133,7 +143,7 @@ class ReservaServiceTest {
         when(distanciaCepService.verificar("04321000")).thenReturn(CoberturaResultado.calculado(1.0, true));
         when(store.configurado()).thenReturn(true);
         var req = new ReservaRequest("passeio_30", "Amanhã", "08:30", false,
-                new EnderecoRequest("04321-000", "123", ""), "11912345678", "tutor-do-corpo-nao-confiavel");
+                new EnderecoRequest("04321-000", "123", ""), "11912345678", List.of("pet-1"), "tutor-do-corpo-nao-confiavel");
 
         service.criar(req, "idem-auth", "auth0|sub-real");
 
