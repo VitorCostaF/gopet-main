@@ -25,7 +25,8 @@ evolution:
   instance: ${EVOLUTION_INSTANCE:}
   api-key: ${EVOLUTION_API_KEY:}
 
-# Backend de persistência da reserva: supabase (REST/PostgREST, padrão) ou postgres (JDBC direto).
+# Backend de persistência de perfis/pets/reservas: supabase (REST/PostgREST, padrão), postgres
+# (JDBC direto) ou mysql (JDBC direto, ver MySql*Store e mysql.* abaixo).
 reserva:
   store: ${RESERVA_STORE:supabase}
 
@@ -41,9 +42,13 @@ db:
   username: ${DB_USERNAME:}
   password: ${DB_PASSWORD:}
 
-# MySQL — histórico de consultas de CEP (tabela consultas_cep, migração em
-# src/main/resources/db/migration, aplicada via `mvn flyway:migrate`).
-# Sem MYSQL_URL, o histórico simplesmente não é gravado (GET /cobertura segue funcionando normalmente).
+# MySQL — sempre usado pro histórico de consultas de CEP (tabela consultas_cep). Também vira o
+# backend de perfis/pets/reservas quando RESERVA_STORE=mysql (tabelas perfis/pets/reservas/
+# reserva_pets, ver MySqlUsuarioStore/MySqlPetStore/MySqlReservaStore) — mesma conexão nos dois
+# casos. Rode `mvn flyway:migrate` (java-api/) pra criar as tabelas antes de usar; migrações em
+# src/main/resources/db/migration. Sem MYSQL_URL, o histórico de CEP simplesmente não é gravado
+# (GET /cobertura segue funcionando normalmente) — mas com RESERVA_STORE=mysql, MYSQL_URL passa a
+# ser obrigatório pra perfis/pets/reservas funcionarem.
 mysql:
   url: ${MYSQL_URL:}
   username: ${MYSQL_USERNAME:}

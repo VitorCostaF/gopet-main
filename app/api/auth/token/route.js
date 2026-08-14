@@ -10,7 +10,7 @@ import { auth0, AUTH0_CONFIGURADO } from "@/lib/auth0";
 export async function GET() {
   if (!AUTH0_CONFIGURADO) return NextResponse.json({ accessToken: null });
   try {
-    const accessToken = await auth0.getAccessToken();
+    const { token: accessToken } = await auth0.getAccessToken();
     return NextResponse.json({ accessToken });
   } catch {
     // Sem sessão válida (usuário não logado, token expirado sem refresh possível, etc.)
